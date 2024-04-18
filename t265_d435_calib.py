@@ -241,6 +241,20 @@ class RealsesneProcessor:
     def save(self):
         pass
 
+def detect_chessboard(color_image, depth_image):
+    # 在帧中检测棋盘标定盘
+    # 返回棋盘标定盘的位置相对于相机的变换矩阵
+    pass
+
+def calculate_camera_offset(reference_transform, current_transform):
+    # 使用参考变换矩阵和当前变换矩阵计算相机位置偏移
+    camera_offset = np.dot(np.linalg.inv(reference_transform), current_transform)
+    return camera_offset
+
+def visualize_camera_offset(camera_offset):
+    # 可视化相机位置偏移数据，例如显示平移和旋转信息
+    pass
+
 
 import concurrent.futures
 
