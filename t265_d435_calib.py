@@ -76,9 +76,6 @@ class RealsesneProcessor:
         return t265_config
 
     def configure_stream(self):
-        # connect to redis server
-        # if self.save_hand:
-        #     self.rds = redis.Redis(host="localhost", port=6669, db=0)
 
         # Create a pipeline
         if use_orb:
@@ -101,63 +98,19 @@ class RealsesneProcessor:
         self.t265_pipeline = rs.pipeline(ctx)
         t265_config = rs.config()
         t265_config.enable_device(self.first_t265_serial)
-        t265_config.enable_stream(
-            rs.stream.pose
-        )
-        # t265_config.enable_stream(rs.stream.fisheye, 1)  # Left camera
-        # t265_config.enable_stream(rs.stream.fisheye, 2)  # Right camera
+        t265_config.enable_stream( rs.stream.pose )
 
         ctx_2 = rs.context()
         self.t265_pipeline_2 = rs.pipeline(ctx_2)
         t265_config_2 = self.get_rs_t265_config(
             self.second_t265_serial, self.t265_pipeline_2
         )
-        t265_config_2.enable_stream(
-            rs.stream.pose
-        )
-        # t265_config_2.enable_stream(rs.stream.fisheye, 1)  # Left camera
-        # t265_config_2.enable_stream(rs.stream.fisheye, 2)  # Right camera
-        # try:
-        #     # Configure the t265 3 stream
-        #     ctx_3 = rs.context()
-        #     self.t265_pipeline_3 = rs.pipeline(ctx_3)
-        #     t265_config_3 = self.get_rs_t265_config(
-        #         self.thrid_t265_serial, self.t265_pipeline_3
-        #     )
-        # except:
-        #     pass
+        t265_config_2.enable_stream( rs.stream.pose )
 
         self.t265_pipeline.start(t265_config)
 
-        # profiles = self.t265_pipeline.get_active_profile()
-        # streams = {
-        #     "left": profiles.get_stream(rs.stream.fisheye, 1).as_video_stream_profile(),
-        #     "right": profiles.get_stream(rs.stream.fisheye, 2).as_video_stream_profile(),
-        # }
-        # self.intrinsics_t2651 = {
-        #     "left": streams["left"].get_intrinsics(),
-        #     "right": streams["right"].get_intrinsics(),
-        # }
-        #
-        # # Print information about both cameras
-        # print("Left camera:", intrinsics["left"])
-        # print("Right camera:", intrinsics["right"])
-
-        # try:
         self.t265_pipeline_2.start(t265_config_2)
-        # self.t265_pipeline_3.start(t265_config_3)
-        # except:
-        #     pass
 
-        # profiles = self.t265_pipeline_2.get_active_profile()
-        # streams = {
-        #     "left": profiles.get_stream(rs.stream.fisheye, 1).as_video_stream_profile(),
-        #     "right": profiles.get_stream(rs.stream.fisheye, 2).as_video_stream_profile()
-        # }
-        # self.intrinsics_t2652 = {
-        #     "left": streams["left"].get_intrinsics(),
-        #     "right": streams["right"].get_intrinsics(),
-        # }
         if not use_orb:
             pipeline_profile = self.pipeline.start(config)
             depth_sensor = pipeline_profile.get_device().first_depth_sensor()
@@ -210,6 +163,7 @@ class RealsesneProcessor:
         return open3d_cloud
 
     @staticmethod
+    # convert T265 frame to pose data
     def frame_to_pose_conversion(input_t265_frames):
         pose_frame = input_t265_frames.get_pose_frame()
         pose_data = pose_frame.get_pose_data()
@@ -248,27 +202,18 @@ class RealsesneProcessor:
         rgbd = self.reproject(color_frame, depth_frame, K_d435)
 
         # get pose data for t265 1
-        pose_4x4 = RealsesneProcessor.frame_to_pose_conversion(
-            input_t265_frames=t265_frames
-        )
-        # left = t265_frames.get_fisheye_frame(1)
-        # left_data = np.asanyarray(left.get_data())
+        pose_4x4 = RealsesneProcessor.frame_to_pose_conversion( input_t265_frames=t265_frames )
 
-        pose_4x4_2 = RealsesneProcessor.frame_to_pose_conversion(
-            input_t265_frames=t265_frames_2
-        )
+
+        pose_4x4_2 = RealsesneProcessor.frame_to_pose_conversion( input_t265_frames=t265_frames_2 )
 
         pose = pose_4x4 @ self.pose  # pose d435 2 t265
 
         pose2 = pose_4x4_2 @ self.c3
 
         cv2.imshow("out", color_frame)
-        # cv2.imshow("out1", left_data)
         key = cv2.waitKey(1)
 
-        # if key == ord('c'):
-        #     self.d435_frame.append(color_frame)
-        #     self.t265_pose.append([pose_4x4, left_data])
 
         self.viser.clear_geometries()
         self.viser.add_geometry(rgbd.transform(pose))
@@ -295,11 +240,6 @@ class RealsesneProcessor:
 
     def save(self):
         pass
-        # with open("1.pkl", 'wb') as f:
-        #     pkl.dump({
-        #         'd435': self.d435_frame,
-        #         't265': self.t265_pose
-        #     }, f)
 
 
 import concurrent.futures
