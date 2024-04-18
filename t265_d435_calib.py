@@ -241,19 +241,44 @@ class RealsesneProcessor:
     def save(self):
         pass
 
-def detect_chessboard(color_image, depth_image):
-    # 在帧中检测棋盘标定盘
-    # 返回棋盘标定盘的位置相对于相机的变换矩阵
-    pass
+def detect_chessboard(color_image, depth_image, objectPoints, camera_matrix, dist_coeffs):
+    # 将彩色图像转换为灰度图像
+    gray = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
+    
+    # 棋盘格内角点的行列数
+    chessboard_size = (8, 6)
+    
+    # 查找棋盘格内角点
+    ret, corners = cv2.findChessboardCorners(gray, chessboard_size, None)
+    
+    if ret:
+        # 如果找到棋盘格内角点，则计算棋盘格的旋转和平移向量
+        ret, rvecs, tvecs = cv2.solvePnP(objectPoints, corners, camera_matrix, dist_coeffs)
+        
+        # 将旋转向量转换为旋转矩阵
+        rotation_matrix, _ = cv2.Rodrigues(rvecs)
+        
+        # 将旋转矩阵和平移向量合并为变换矩阵
+        transform_matrix = np.hstack((rotation_matrix, tvecs))
+        
+        return transform_matrix
+
+    return None
 
 def calculate_camera_offset(reference_transform, current_transform):
     # 使用参考变换矩阵和当前变换矩阵计算相机位置偏移
     camera_offset = np.dot(np.linalg.inv(reference_transform), current_transform)
+    
     return camera_offset
 
 def visualize_camera_offset(camera_offset):
     # 可视化相机位置偏移数据，例如显示平移和旋转信息
-    pass
+    translation = camera_offset[:, 3]  # 提取平移向量
+    rotation = camera_offset[:, :3]  # 提取旋转矩阵
+    
+    print("Translation vector: ", translation)
+    print("Rotation matrix: ", rotation)
+
 
 
 import concurrent.futures
