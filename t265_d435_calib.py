@@ -241,6 +241,11 @@ class RealsesneProcessor:
     def save(self):
         pass
 
+
+# TODO:
+# 去畸变（april函数中有）
+# 左眼作为原点，但是需要加个offset，使得相机中心作为原点
+
 def detect_chessboard(color_image, depth_image, objectPoints, camera_matrix, dist_coeffs):
     # 将彩色图像转换为灰度图像
     gray = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
