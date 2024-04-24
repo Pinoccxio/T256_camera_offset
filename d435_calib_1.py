@@ -10,7 +10,7 @@ from hyperparameters import *
 import pickle as pkl
 from pupil_apriltags import Detector
 from cameras_orb import GraspCameraORB
-
+from matplotlib import pyplot as plt
 use_orb = True
 
 class RealsesneProcessor:
@@ -33,7 +33,7 @@ class RealsesneProcessor:
         self.FISHEYE2POSE = np.eye(4)
 
         viser = o3d.visualization.Visualizer()
-        viser.create_window("out")
+        viser.create_window("vis_out")
         viser.get_render_option().point_size = 4
         self.viser = viser
 
@@ -139,7 +139,7 @@ class RealsesneProcessor:
         mask = z < 3.
         open3d_cloud.points = o3d.utility.Vector3dVector(pc[mask, :3])
         open3d_cloud.colors = o3d.utility.Vector3dVector(rgb_image[mask][:, ::-1] / 255.)
-        # o3d.visualization.draw_geometries([open3d_cloud])
+        o3d.visualization.draw_geometries([open3d_cloud])
         return open3d_cloud
 
     @staticmethod
@@ -176,10 +176,9 @@ class RealsesneProcessor:
         left_data = np.asanyarray(left.get_data())
 
         pose = pose_4x4 @ self.FISHEYE2POSE  # pose
-
+        print("pose:\n",pose)
         # pose2 = pose_4x4_2 @ self.c3
-        flag, T1,left_data = aprildetect(self.detector, left_data, self.K_t265, self.D_t265, True)
-
+        flag, T,left_data = aprildetect(self.detector, left_data, self.K_t265, self.D_t265, True)
         cv2.imshow("out", left_data)
         key = cv2.waitKey(1)
 
@@ -192,7 +191,7 @@ class RealsesneProcessor:
 
 
         if flag:
-            T1_base = pose @ T1
+            T1_base = pose @ T
             self.viser.add_geometry(o3d.geometry.TriangleMesh().create_coordinate_frame(0.1).transform(T1_base))
         if i == 0:
             #
@@ -210,6 +209,52 @@ class RealsesneProcessor:
             self.params = ctrl.convert_to_pinhole_camera_parameters()
         return key
 
+    def process_frame_1(self, i, r):
+
+        t265_frames = self.t265_pipeline.wait_for_frames()
+
+        pose_4x4 = RealsesneProcessor.frame_to_pose_conversion(input_t265_frames=t265_frames)
+
+        left = t265_frames.get_fisheye_frame(1)
+        left_data = np.asanyarray(left.get_data())
+
+        pose = pose_4x4 @ self.FISHEYE2POSE  # pose
+        # print("FISH:",self.FISHEYE2POSE)
+        flag, T,left_data = aprildetect(self.detector, left_data, self.K_t265, self.D_t265, True)
+
+        cv2.imshow("out", left_data)
+        key = cv2.waitKey(1)
+
+        self.viser.clear_geometries()
+        self.viser.add_geometry(o3d.geometry.TriangleMesh().create_coordinate_frame(0.1).transform(pose_4x4))
+        self.viser.add_geometry(o3d.geometry.TriangleMesh().create_coordinate_frame(0.1).transform(pose))
+        
+        if flag:
+            T_base = pose @ T
+            # T_base = pose @ np.linalg.inv(T)
+            self.viser.add_geometry(o3d.geometry.TriangleMesh().create_coordinate_frame(0.1).transform(T_base))
+        if r:
+            pose_pre = pose
+            if flag:
+                pose_now = pose
+                
+                
+       
+        if i == 0:
+            self.viser.run()
+            ctrl = self.viser.get_view_control()
+            self.params = ctrl.convert_to_pinhole_camera_parameters()
+
+        else:
+            ctrl: o3d.visualization.ViewControl = self.viser.get_view_control()
+            ctrl.convert_from_pinhole_camera_parameters(self.params)
+
+            self.viser.poll_events()
+
+            self.params = ctrl.convert_to_pinhole_camera_parameters()
+        
+        return key
+    
     def save(self):
         # pass
         with open("0423.pkl", 'wb') as f:
@@ -282,10 +327,13 @@ def main():
     )
     realsense_processor.configure_stream()
     i = 0
+    r = 0
     while True:
-        key = realsense_processor.process_frame(i)
+        key = realsense_processor.process_frame_1(i,r)
         if i == 0:
             i = 1
+        if key == ord('r'):
+            r = 1
         if key == ord('q'):
             break
     realsense_processor.save()

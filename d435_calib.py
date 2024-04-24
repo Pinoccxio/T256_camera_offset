@@ -352,8 +352,6 @@ class RealsesneProcessor:
             }, f)
 
 
-import concurrent.futures
-
 
 def aprildetect(detector, im, K, D, fisheye=False):
     if fisheye:
